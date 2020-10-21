@@ -10,9 +10,9 @@ while IFS= read -r  line; do
 #extracting file names for each pair in pair-sequence alignment & running quality check using fastqc
 	file_1=$(echo $line | cut -d" " -f3 | cut -d "." -f1)
 	file_2=$(echo $line | cut -d" " -f4 | cut -d "." -f1)
-	fastqc --extract  -t 2  $fqDir/$file_1.fq.gz $fqDir/$file_2.fq.gz -o ~/Assignment1
+#	fastqc --extract  -t 2  $fqDir/$file_1.fq.gz $fqDir/$file_2.fq.gz -o ~/Assignment1
 	 
-#Assessing quality of the two files	
+#2. Assessing quality of the two files	
 	echo "-----------------------------------------------------------------------"
 #Pass Check: Per Base Sequence quality, per sequence quality score, per Ncontent and Adapter content	
 	qualityChecks[0]=$( head -2 ${file_1}_fastqc/summary.txt | tail -1 | cut -f1) 
@@ -40,9 +40,9 @@ while IFS= read -r  line; do
 		cat ${file_2}_fastqc/summary.txt
 	fi
 	echo "-----------------------------------------------------------------------"
+#3. Bowtie2 alignment
+
 done < "$fqTable"
 
-#2. Asses quality
-#3. Alignment Using bowtie2
 #4. Generate counts data 
 #5. Output table
