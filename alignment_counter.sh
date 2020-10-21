@@ -1,16 +1,20 @@
 #!/bin/bash
 #TODO:
 #1. Quality check using fastqc
-
+#Constructing index genome
 #Pathing to list of sequence files  & looping rows containing each pair 
 fqDir="/localdisk/data/BPSM/Assignment1/fastq"
 fqTable="/localdisk/data/BPSM/Assignment1/fastq/fqfiles"
 
+#building index
+gunzip -c /localdisk/data/BPSM/Assignment1/Tbb_genome/Tb927_genome.fasta.gz > ~/Assignment1/TbbGenome.fasta
+bowtie2-build --threads 2 TbbGenome.fasta T_brucei
+
 while IFS= read -r  line; do
-#extracting file names for each pair in pair-sequence alignment & running quality check using fastqc
+#extracting file names of each pair in pair-sequence alignment & running quality check using fastqc
 	file_1=$(echo $line | cut -d" " -f3 | cut -d "." -f1)
 	file_2=$(echo $line | cut -d" " -f4 | cut -d "." -f1)
-#	fastqc --extract  -t 2  $fqDir/$file_1.fq.gz $fqDir/$file_2.fq.gz -o ~/Assignment1
+	fastqc --extract  -t 2  $fqDir/$file_1.fq.gz $fqDir/$file_2.fq.gz -o ~/Assignment1
 	 
 #2. Assessing quality of the two files	
 	echo "-----------------------------------------------------------------------"
@@ -38,9 +42,10 @@ while IFS= read -r  line; do
 		echo "Quality check fail in on of the pairs!"
 		cat ${file_1}_fastqc/summary.txt
 		cat ${file_2}_fastqc/summary.txt
-	fi
+	f
 	echo "-----------------------------------------------------------------------"
 #3. Bowtie2 alignment
+	 bowtie2 --threads 2 -x T_brucei -1 $fqDir/$file_1.fq.gz -2 $fqDir/$file_2.fq.gz -S $file_1.sam
 
 done < "$fqTable"
 
