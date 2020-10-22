@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#Making sure there is an Assignment1 directory to work in
+mkdir -p ~/Assignment1
+
 #Assinging variables for easy pathing to list of sequence files  & looping rows containing each pair 
 fqDir="/localdisk/data/BPSM/Assignment1/fastq"
 fqTable="/localdisk/data/BPSM/Assignment1/fastq/fqfiles"
@@ -8,10 +11,11 @@ fqTable="/localdisk/data/BPSM/Assignment1/fastq/fqfiles"
 gunzip -c /localdisk/data/BPSM/Assignment1/Tbb_genome/Tb927_genome.fasta.gz > ~/Assignment1/TbbGenome.fasta
 bowtie2-build --threads 2 TbbGenome.fasta T_brucei
 
-#Main loop to conduct quality check alignment and output on each sample one at a time
+#Main loop to conduct quality check and alignment generating files for generating counts data
 while IFS= read -r  line; do
 
 #identifying filenames from fqTable for each pair in the pair-sequence alignment & running quality check using fastqc
+	morph=$(echo $line | cut -d" " -f2)
 	file_1=$(echo $line | cut -d" " -f3 | cut -d "." -f1)
 	file_2=$(echo $line | cut -d" " -f4 | cut -d "." -f1)
 	fastqc --extract  -t 2  $fqDir/$file_1.fq.gz $fqDir/$file_2.fq.gz -o ~/Assignment1	
@@ -42,11 +46,11 @@ while IFS= read -r  line; do
 		echo "-----------------------"
 
 #Bowtie alignment using previously indexed genome, converting bowtie sam output to bam using samtools, sorting and indexing output
-		bowtie2 --threads 4 -x T_brucei -1 $fqDir/$file_1.fq.gz -2 $fqDir/$file_2.fq.gz | samtools view -bS - > $file_1.bam
-        	samtools sort $file_1.bam -o $file_1.sorted.bam
-        	samtools index $file_1.sorted.bam
+		bowtie2 --threads 4 -x T_brucei -1 $fqDir/$file_1.fq.gz -2 $fqDir/$file_2.fq.gz | samtools view -bS - > $file_1.$morph.bam
+        	samtools sort $file_1.$morph.bam -o $file_1.$morph.sorted.bam
+        	samtools index $file_1.$morph.sorted.bam
 
-
+#If quality check is not passed for 1 or more metric of either sequence, return squence the fastaqc summary to show failed metric 
 	else
 		echo "Quality check fail in on of the pairs!"
 		cat ${file_1}_fastqc/summary.txt
@@ -56,5 +60,8 @@ while IFS= read -r  line; do
 
 done < "$fqTable"
 
-#4. Generate counts data 
+#4. Generate counts data
+bedtools multicov -bams *.Stumpy.Slender.bam -bed /localdisk/data/BPSM/Assignment1/Tbbgenes.bed | less
+bedtools multicov -bams *.Stumpy.Stumpy.bam -bed /localdisk/data/BPSM/Assignment1/Tbbgenes.bed | less
+
 #5. Output table
