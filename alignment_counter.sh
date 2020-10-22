@@ -9,7 +9,7 @@ fqTable="/localdisk/data/BPSM/Assignment1/fastq/fqfiles"
 
 #Constructing indexed genome of Tryposoma bruncei bruncei for bowtie2 alignment and storing it in working directory
 gunzip -c /localdisk/data/BPSM/Assignment1/Tbb_genome/Tb927_genome.fasta.gz > ~/Assignment1/TbbGenome.fasta
-bowtie2-build --threads 2 TbbGenome.fasta T_brucei
+bowtie2-build --threads 16 TbbGenome.fasta T_brucei
 
 #Main loop to conduct quality check and alignment generating files for generating counts data
 while IFS= read -r  line; do
@@ -18,7 +18,7 @@ while IFS= read -r  line; do
 	morph=$(echo $line | cut -d" " -f2)
 	file_1=$(echo $line | cut -d" " -f3 | cut -d "." -f1)
 	file_2=$(echo $line | cut -d" " -f4 | cut -d "." -f1)
-	fastqc --extract  -t 2  $fqDir/$file_1.fq.gz $fqDir/$file_2.fq.gz -o ~/Assignment1	
+	fastqc --extract  -t 16  $fqDir/$file_1.fq.gz $fqDir/$file_2.fq.gz -o ~/Assignment1	
 
 #Pass Check based on fastqc summary report: Per Base Sequence quality, per sequence quality score, per N content and Adapter content	
 	qualityChecks[0]=$( head -2 ${file_1}_fastqc/summary.txt | tail -1 | cut -f1) 
@@ -46,9 +46,9 @@ while IFS= read -r  line; do
 		echo "-----------------------"
 
 #Bowtie alignment using previously indexed genome, converting bowtie sam output to bam using samtools, sorting and indexing output
-		bowtie2 --threads 4 -x T_brucei -1 $fqDir/$file_1.fq.gz -2 $fqDir/$file_2.fq.gz | samtools view -bS - > $file_1.$morph.bam
-        	samtools sort $file_1.$morph.bam -o $file_1.$morph.sorted.bam
-        	samtools index $file_1.$morph.sorted.bam
+		bowtie2 --threads 16 -x T_brucei -1 $fqDir/$file_1.fq.gz -2 $fqDir/$file_2.fq.gz | samtools view -bS - > $file_1.$morph.bam
+	       	samtools sort $file_1.$morph.bam -o $file_1.$morph.sorted.bam
+	      	samtools index $file_1.$morph.sorted.bam
 
 #If quality check is not passed for 1 or more metric of either sequence, return squence the fastaqc summary to show failed metric 
 	else
@@ -56,12 +56,19 @@ while IFS= read -r  line; do
 		cat ${file_1}_fastqc/summary.txt
 		cat ${file_2}_fastqc/summary.txt
 	fi
-	echo "-----------------------------------------------------------------------"
 
 done < "$fqTable"
 
-#4. Generate counts data
-bedtools multicov -bams *.Stumpy.Slender.bam -bed /localdisk/data/BPSM/Assignment1/Tbbgenes.bed | less
-bedtools multicov -bams *.Stumpy.Stumpy.bam -bed /localdisk/data/BPSM/Assignment1/Tbbgenes.bed | less
+#generating counts data and piping into awk that takes gene name and calculates mean
+bedtools multicov -bams *.Slender.sorted.bam -bed /localdisk/data/BPSM/Assignment1/Tbbgenes.bed | \
+awk 'NR==0 { next }; {T=0; for(N=7; N<=NF; N++) T+=$N; T/=(NF-6); print T }' | sed '1i Slender' > Slender.txt
 
-#5. Output table
+bedtools multicov -bams *.Stumpy.sorted.bam -bed /localdisk/data/BPSM/Assignment1/Tbbgenes.bed | \
+awk 'NR==0 { next }; {T=0; for(N=7; N<=NF; N++) T+=$N; T/=(NF-6); print T }' | sed '1i Stumpy'  > Stumpy.txt
+
+#Column of Gene names
+awk '{print $4}' /localdisk/data/BPSM/Assignment1/Tbbgenes.bed | sed '1i Genes' >  genes.txt
+
+#Constructing output table
+paste Slender.txt Stumpy.txt | column -s $'\t' -t  > means.txt
+paste genes.txt means.txt | column -s $'\t' -t > output.txt
